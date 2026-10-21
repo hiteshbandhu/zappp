@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#34343A"/>
+      <stop offset="1" stop-color="#141417"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.22"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.04"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.08"/>
+    </linearGradient>
+    <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#D9D9DE"/>
+    </linearGradient>
+    <linearGradient id="caret" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3D9BFF"/>
+      <stop offset="1" stop-color="#0A6CFF"/>
+    </linearGradient>
+  </defs>
+  <!-- macOS icon grid: 824×824 squircle centered in 1024 -->
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)"/>
+  <rect x="101.5" y="101.5" width="821" height="821" rx="183.5" fill="none" stroke="url(#rim)" stroke-width="3"/>
+  <!-- waveform -->
+  <rect x="263" y="422" width="66" height="180" rx="33" fill="url(#bar)"/>
+  <rect x="373" y="342" width="66" height="340" rx="33" fill="url(#bar)"/>
+  <rect x="483" y="387" width="66" height="250" rx="33" fill="url(#bar)"/>
+  <!-- text cursor -->
+  <rect x="649" y="292" width="58" height="440" rx="29" fill="url(#caret)"/>
+  <rect x="598" y="292" width="160" height="56" rx="28" fill="url(#caret)"/>
+  <rect x="598" y="676" width="160" height="56" rx="28" fill="url(#caret)"/>
+</svg>

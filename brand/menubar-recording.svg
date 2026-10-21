@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">
+  <!-- Template image shown while recording: the mark knocked out of a filled tile. -->
+  <defs>
+    <mask id="m">
+      <rect width="36" height="36" fill="#fff"/>
+      <rect x="6" y="14.5" width="3" height="7" rx="1.5" fill="#000"/>
+      <rect x="11" y="11" width="3" height="14" rx="1.5" fill="#000"/>
+      <rect x="16" y="13" width="3" height="10" rx="1.5" fill="#000"/>
+      <rect x="24.2" y="9" width="2.6" height="18" rx="1.3" fill="#000"/>
+      <rect x="21.6" y="9" width="7.8" height="2.6" rx="1.3" fill="#000"/>
+      <rect x="21.6" y="24.4" width="7.8" height="2.6" rx="1.3" fill="#000"/>
+    </mask>
+  </defs>
+  <rect x="1.5" y="3" width="33" height="30" rx="8" fill="#000" mask="url(#m)"/>
+</svg>

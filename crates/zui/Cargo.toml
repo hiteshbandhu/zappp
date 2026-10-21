@@ -1,0 +1,11 @@
+[package]
+name = "zui"
+version = "0.1.0"
+edition = "2024"
+description = "zappp's component library for gpui: theme, primitives and controls"
+
+[dependencies]
+gpui = { version = "0.2.2", features = ["runtime_shaders"] }
+rust-embed = "8"
+unicode-segmentation = "1"
+anyhow = "1"

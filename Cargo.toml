@@ -1,0 +1,49 @@
+[workspace]
+members = ["crates/zui"]
+
+[package]
+name = "zappp"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+gpui = { version = "0.2.2", features = ["runtime_shaders"] }
+zui = { path = "crates/zui" }
+anyhow = "1"
+futures = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+dirs = "6"
+cpal = "0.16"
+# transcribe-rs 0.3.12 targets ort rc.12; rc.15 changed Session::builder.
+ort = { version = "=2.0.0-rc.12", default-features = false }
+transcribe-rs = { version = "0.3.12", features = ["onnx", "ort-coreml"] }
+core-graphics = "0.24"
+core-foundation = "0.10"
+objc2 = "0.6"
+block2 = "0.6"
+# Bark's audio frontend (STFT) and fp16 weights.
+rustfft = "6.4"
+half = "2.7"
+objc2-foundation = { version = "0.3", features = ["NSString", "NSArray", "NSThread", "NSURL", "NSDictionary", "NSValue", "NSError", "NSData", "NSGeometry"] }
+objc2-core-ml = { version = "0.3", features = ["MLModel", "MLModelConfiguration", "MLMultiArray", "MLFeatureValue", "MLFeatureProvider", "MLDictionaryFeatureProvider", "MLModel_MLModelCompilation"] }
+objc2-app-kit = { version = "0.3", features = ["NSWorkspace", "NSRunningApplication", "NSStatusBar", "NSStatusItem", "NSStatusBarButton", "NSButton", "NSControl", "NSView", "NSResponder", "NSMenu", "NSMenuItem", "NSImage", "NSWindow", "NSApplication", "NSGraphics", "NSScreen"] }
+raw-window-handle = "0.6"
+ureq = { version = "3", features = ["json"] }
+chrono = { version = "0.4", features = ["serde"] }
+log = "0.4"
+env_logger = "0.11"
+
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.dev]
+debug = 0
+# The ASR decode loop is hot; unoptimized it costs hundreds of ms.
+opt-level = 2
+# Disk is tight on this machine; incremental caches grow by hundreds of MB.
+incremental = false
+
+[dev-dependencies]
+# Renders brand/*.svg into the app icon and menu bar images (examples/render_icons.rs).
+resvg = "0.45"
