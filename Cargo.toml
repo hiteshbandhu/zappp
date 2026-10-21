@@ -47,3 +47,8 @@ incremental = false
 [dev-dependencies]
 # Renders brand/*.svg into the app icon and menu bar images (examples/render_icons.rs).
 resvg = "0.45"
+
+[profile.release]
+# Smaller, faster download: link-time optimization and no debug symbols.
+lto = "thin"
+strip = true

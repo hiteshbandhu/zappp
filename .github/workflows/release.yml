@@ -1,0 +1,47 @@
+name: Release
+
+# Push a tag like v0.1.0 (matching Cargo.toml's version) to build and publish
+# the DMG, the zip and the Homebrew cask.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Check the tag matches Cargo.toml
+        run: |
+          version=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
+          test "v$version" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME != v$version"; exit 1; }
+
+      - name: Test
+        run: cargo test
+
+      - name: Build release artifacts
+        run: ZAPPP_REPO=$GITHUB_REPOSITORY scripts/release.sh
+
+      - name: Release notes
+        run: |
+          version=${GITHUB_REF_NAME#v}
+          awk -v v="$version" '$0 ~ "^## " v {on=1; next} /^## /{on=0} on' CHANGELOG.md > dist/notes.md
+          cat docs/release-footer.md >> dist/notes.md
+
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "zappp ${GITHUB_REF_NAME#v}" \
+            --notes-file dist/notes.md \
+            dist/zappp-*.zip dist/zappp-*.dmg dist/SHA256SUMS dist/zappp.rb docs/media/zappp-launch.mp4
+
+      - name: Show the Homebrew cask
+        run: cat dist/zappp.rb

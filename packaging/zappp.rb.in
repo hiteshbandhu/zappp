@@ -1,0 +1,39 @@
+cask "zappp" do
+  version "@VERSION@"
+  sha256 "@SHA256@"
+
+  url "https://github.com/@REPO@/releases/download/v#{version}/zappp-#{version}.zip"
+  name "zappp"
+  desc "Hold-to-talk dictation that runs on the Neural Engine"
+  homepage "https://github.com/@REPO@"
+
+  depends_on arch: :arm64
+  depends_on macos: :sonoma
+
+  app "zappp.app"
+
+  # Releases are ad-hoc signed (no Apple Developer ID yet), so clear the
+  # download quarantine flag; otherwise Gatekeeper refuses to open the app.
+  postflight_steps do
+    run "/usr/bin/xattr",
+        args:           ["-dr", "com.apple.quarantine", "{{appdir}}/zappp.app"],
+        writable_paths: ["zappp.app"],
+        writable_base:  :appdir
+  end
+
+  uninstall quit: "dev.zappp.app"
+
+  zap trash: [
+    "~/Library/Application Support/zappp",
+    "~/Library/Caches/dev.zappp.app",
+    "~/Library/Logs/zappp.log",
+  ]
+
+  caveats <<~EOS
+    zappp needs Microphone, Input Monitoring and Accessibility permissions.
+    Its welcome guide walks you through them on first launch.
+
+    After an upgrade, macOS may ask for Input Monitoring and Accessibility
+    again: remove zappp from both lists with "−" and allow it again.
+  EOS
+end

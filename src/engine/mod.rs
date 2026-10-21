@@ -69,7 +69,7 @@ pub fn process(asr: &Asr, job: Job) -> Result<Option<Outcome>> {
 
     if job.command {
         let Some(key) = s.api_key() else {
-            anyhow::bail!("Command Mode needs a Claude API key (Settings → AI)");
+            anyhow::bail!("Command Mode needs a Claude API key (Settings → Text)");
         };
         let t = Instant::now();
         let text = cleanup::claude_command(&key, &raw, job.selection.as_deref(), &job.app.name)?;
