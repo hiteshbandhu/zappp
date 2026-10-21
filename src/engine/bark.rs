@@ -63,9 +63,13 @@ struct Matrix {
 }
 
 impl Matrix {
-    /// `y += self · x`, on Accelerate.
+    /// `y += self · x`, on Accelerate. The lengths are checked in release
+    /// builds too: BLAS reads through raw pointers.
     fn mul_add(&self, x: &[f32], y: &mut [f32]) {
-        debug_assert!(x.len() == self.cols && y.len() == self.rows);
+        assert!(
+            x.len() == self.cols && y.len() == self.rows && self.data.len() == self.rows * self.cols,
+            "matrix shape mismatch"
+        );
         const ROW_MAJOR: i32 = 101;
         const NO_TRANS: i32 = 111;
         unsafe {
@@ -171,8 +175,11 @@ fn load_weight(dir: &Path, name: &str) -> Result<(Vec<f32>, Vec<usize>)> {
     if quantized.exists() {
         let q = read_npy(&quantized)?;
         let scales = read_npy(&dir.join(format!("{name}.s.npy")))?.to_f32()?;
-        let cols = q.shape.get(1).copied().unwrap_or(1);
+        let cols = q.shape.get(1).copied().unwrap_or(1).max(1);
         let mut w = q.to_f32()?;
+        if scales.len() != w.len() / cols {
+            return Err(anyhow!("{name}: one scale per row expected"));
+        }
         for (row, scale) in w.chunks_mut(cols).zip(&scales) {
             row.iter_mut().for_each(|v| *v *= scale);
         }
@@ -188,6 +195,9 @@ fn load_matrix(dir: &Path, name: &str) -> Result<Matrix> {
     let [rows, cols] = shape[..] else {
         return Err(anyhow!("{name} is not a matrix"));
     };
+    if rows == 0 || cols == 0 || rows.checked_mul(cols) != Some(data.len()) {
+        return Err(anyhow!("{name}: {} values don't fill a {rows}×{cols} matrix", data.len()));
+    }
     Ok(Matrix { data, rows, cols })
 }
 
@@ -296,6 +306,42 @@ fn sigmoid(x: f32) -> f32 {
 }
 
 impl Decoder {
+    /// Checks that every weight agrees with every other and with the
+    /// vocabulary, so decoding can't index or multiply out of bounds even if
+    /// the downloaded files are corrupt or hostile.
+    fn validate(&self) -> Result<()> {
+        let hidden = self.embedding.cols;
+        let gates = 4 * hidden;
+        let mut input = hidden;
+        for (i, l) in self.layers.iter().enumerate() {
+            let ok = (l.input.rows, l.input.cols) == (gates, input)
+                && (l.hidden.rows, l.hidden.cols) == (gates, hidden)
+                && l.bias.len() == gates;
+            if !ok {
+                return Err(anyhow!("Bark LSTM layer {i} has inconsistent shapes"));
+            }
+            input = hidden;
+        }
+        let projector = &self.projector;
+        if projector.w.cols != hidden || projector.w.rows != ENC_DIM || projector.b.len() != ENC_DIM {
+            return Err(anyhow!("Bark decoder projector has unexpected shape"));
+        }
+        let head = &self.head;
+        let outputs = self.vocab_size + self.durations.len();
+        if head.w.cols != ENC_DIM || head.w.rows < outputs || head.b.len() != head.w.rows {
+            return Err(anyhow!("Bark joint head has unexpected shape"));
+        }
+        if self.layers.is_empty()
+            || self.durations.is_empty()
+            || self.max_symbols == 0
+            || self.blank >= self.vocab_size
+            || self.embedding.rows < self.vocab_size
+        {
+            return Err(anyhow!("Bark vocabulary settings don't match its weights"));
+        }
+        Ok(())
+    }
+
     /// Runs the prediction network on one token.
     fn step(&self, token: usize, state: &State) -> (Vec<f32>, State) {
         let mut x = self.embedding.row(token).to_vec();
@@ -336,7 +382,8 @@ impl Decoder {
             }
             let logits = self.head.apply(&joint);
             let token = argmax(&logits[..self.vocab_size]);
-            let mut duration = self.durations[argmax(&logits[self.vocab_size..])];
+            let duration_logits = &logits[self.vocab_size..self.vocab_size + self.durations.len()];
+            let mut duration = self.durations[argmax(duration_logits)];
             if token == self.blank {
                 t += duration.max(1);
                 symbols = 0;
@@ -426,7 +473,12 @@ impl Bark {
             durations: ids("durations"),
             max_symbols: number("max_symbols_per_step")?,
         };
-        let frontend = Frontend::new(load_matrix(&weights, "mel_filters")?);
+        decoder.validate()?;
+        let mel = load_matrix(&weights, "mel_filters")?;
+        if (mel.rows, mel.cols) != (MELS, BINS) {
+            return Err(anyhow!("mel_filters is {}×{}, expected {MELS}×{BINS}", mel.rows, mel.cols));
+        }
+        let frontend = Frontend::new(mel);
 
         let encoder = Model::load(&dir.join("BarkEncoder.mlmodelc"), units)?;
 
@@ -471,7 +523,11 @@ impl Bark {
             ("mask", &Array::i32_from(&[1, frames], &mask)?),
         ])?;
         let encoded = outputs.array("encoded")?;
-        let available = encoded.shape().get(1).copied().unwrap_or(0);
+        let shape = encoded.shape();
+        if shape.len() != 3 || shape[2] != ENC_DIM {
+            return Err(anyhow!("the Bark encoder returned shape {shape:?}"));
+        }
+        let available = shape[1];
         let len = encoded_len(valid).min(available);
         let view = encoded.view();
         let mut enc = vec![0f32; len * ENC_DIM];
@@ -558,6 +614,49 @@ mod tests {
         assert_eq!(encoded_len(801), 101);
         assert_eq!(encoded_len(1), 1);
         assert_eq!(encoded_len(1501), 188);
+    }
+
+    fn matrix(rows: usize, cols: usize) -> Matrix {
+        Matrix {
+            data: vec![0.; rows * cols],
+            rows,
+            cols,
+        }
+    }
+
+    fn tiny_decoder(head_rows: usize) -> Decoder {
+        let h = 4;
+        Decoder {
+            embedding: matrix(10, h),
+            layers: vec![Lstm {
+                input: matrix(4 * h, h),
+                hidden: matrix(4 * h, h),
+                bias: vec![0.; 4 * h],
+            }],
+            projector: Linear {
+                w: matrix(ENC_DIM, h),
+                b: vec![0.; ENC_DIM],
+            },
+            head: Linear {
+                w: matrix(head_rows, ENC_DIM),
+                b: vec![0.; head_rows],
+            },
+            vocab_size: 10,
+            blank: 9,
+            durations: vec![0, 1, 2],
+            max_symbols: 10,
+        }
+    }
+
+    #[test]
+    fn decoder_shapes_are_validated() {
+        assert!(tiny_decoder(13).validate().is_ok());
+        // A joint head too small for vocabulary + durations is refused
+        // instead of being read out of bounds.
+        assert!(tiny_decoder(12).validate().is_err());
+        let mut bad = tiny_decoder(13);
+        bad.blank = 10;
+        assert!(bad.validate().is_err());
     }
 
     #[test]

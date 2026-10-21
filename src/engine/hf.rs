@@ -2,7 +2,7 @@
 
 use std::{
     io::{Read as _, Write as _},
-    path::Path,
+    path::{Component, Path, PathBuf},
 };
 
 use anyhow::{Result, anyhow};
@@ -34,7 +34,7 @@ pub fn download(repo: &str, wanted: impl Fn(&str) -> bool, dest: &Path, progress
 
     let mut done = 0u64;
     for (path, _) in &files {
-        let target = dest.join(path);
+        let target = safe_join(dest, path)?;
         std::fs::create_dir_all(target.parent().unwrap())?;
         let url = format!("https://huggingface.co/{repo}/resolve/main/{path}");
         let mut response = ureq::get(&url).call().map_err(|e| anyhow!("{path}: {e}"))?;
@@ -52,4 +52,37 @@ pub fn download(repo: &str, wanted: impl Fn(&str) -> bool, dest: &Path, progress
         }
     }
     Ok(())
+}
+
+/// Joins a repo-relative `path` onto `dest`, refusing anything that could
+/// land outside it: absolute paths, `..`, backslashes or empty segments. The
+/// file listing comes from the network, so it is not trusted.
+fn safe_join(dest: &Path, path: &str) -> Result<PathBuf> {
+    let relative = Path::new(path);
+    let plain = !path.is_empty()
+        && !path.contains('\\')
+        && relative.components().all(|c| matches!(c, Component::Normal(_)));
+    if !plain {
+        return Err(anyhow!("refusing to download unexpected path {path:?}"));
+    }
+    let target = dest.join(relative);
+    if !target.starts_with(dest) {
+        return Err(anyhow!("refusing to download unexpected path {path:?}"));
+    }
+    Ok(target)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn safe_join_accepts_plain_paths_only() {
+        let dest = Path::new("/models/x");
+        assert!(safe_join(dest, "coreml/ane/vocab.json").is_ok());
+        assert!(safe_join(dest, "Encoder.mlmodelc/weights/weight.bin").is_ok());
+        for bad in ["", "../escape", "a/../../b", "/etc/passwd", "a\\b", "./a", "a//b/.."] {
+            assert!(safe_join(dest, bad).is_err(), "{bad:?} should be refused");
+        }
+    }
 }
