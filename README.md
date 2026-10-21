@@ -56,7 +56,7 @@ Requires a Mac with **Apple Silicon** (M1 or later) and **macOS 14 Sonoma** or l
 ### Homebrew (recommended)
 
 ```bash
-brew install --cask hiteshbandhu/zappp/zappp
+brew install --cask hiteshbandhu/tap/zappp
 ```
 
 ### Download

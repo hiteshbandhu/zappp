@@ -360,7 +360,7 @@ fn scene_end(t: f32, a: &Assets) -> String {
     let alpha = scene_alpha(t, END);
     let s = spring(t - END.0 - 0.1);
     let line = |at: f32| ease_out(seg(t, END.0 + at, END.0 + at + 0.6));
-    let cmd = "brew install --cask hiteshbandhu/zappp/zappp";
+    let cmd = "brew install --cask hiteshbandhu/tap/zappp";
     let (bw, bh) = (980., 86.);
     let (bx, by) = ((W - bw) / 2., 640. + (1. - line(0.9)) * 20.);
     format!(

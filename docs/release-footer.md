@@ -3,7 +3,7 @@
 
 ### Install
 
-**Homebrew:** `brew install --cask hiteshbandhu/zappp/zappp`
+**Homebrew:** `brew install --cask hiteshbandhu/tap/zappp`
 
 **DMG:** download `zappp-*.dmg` below, drag zappp to Applications, then
 right-click it → **Open** → **Open** the first time (zappp isn't notarized by

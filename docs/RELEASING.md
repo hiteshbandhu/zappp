@@ -2,7 +2,8 @@
 
 Releases are built by GitHub Actions on an Apple Silicon runner, published as
 a GitHub release, and installed through the Homebrew tap
-[hiteshbandhu/homebrew-zappp](https://github.com/hiteshbandhu/homebrew-zappp).
+[hiteshbandhu/homebrew-tap](https://github.com/hiteshbandhu/homebrew-tap)
+(`hiteshbandhu/tap`), which also holds hallmonitor.
 
 ## Steps
 
@@ -24,13 +25,13 @@ a GitHub release, and installed through the Homebrew tap
 4. **Update the tap** with the generated cask:
    ```bash
    gh release download v0.2.0 -p zappp.rb -D /tmp/zappp-cask
-   cd "$(brew --repo hiteshbandhu/zappp)"
+   cd "$(brew --repo hiteshbandhu/tap)"
    cp /tmp/zappp-cask/zappp.rb Casks/zappp.rb
    git commit -am "zappp 0.2.0" && git push
    ```
 5. **Check the install** on a clean account or Mac:
    ```bash
-   brew update && brew upgrade --cask zappp   # or: brew install --cask hiteshbandhu/zappp/zappp
+   brew update && brew upgrade --cask zappp   # or: brew install --cask hiteshbandhu/tap/zappp
    ```
 
 ## Building locally
